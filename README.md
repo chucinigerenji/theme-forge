@@ -162,9 +162,9 @@ xxx.mtz
 
 本项目采用 **MIT License**（见 `LICENSE`）。
 
-> 例外：`assets/qr_099.jpg`（作者收款码）与 `assets/bili_profile.jpg`（作者 B 站主页截图）
-> 是作者个人素材，**不在 MIT 授权范围内**，请勿再分发或商用。
-> 第三方依赖（Apache Commons Compress / XZ for Java）遵循各自许可，见 `third_party/`。
+> ⚠️ 例外与第三方依赖说明见 **[NOTICE.md](NOTICE.md)**：
+> `assets/qr_099.jpg`（作者收款码）与 `assets/bili_profile.jpg`（作者 B 站主页截图）
+> 是个人素材，**不在 MIT 授权范围内**；Apache Commons Compress / XZ for Java 遵循各自许可。
 
 ## 免责声明
 

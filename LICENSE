@@ -19,20 +19,3 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-
---------------------------------------------------------------------
-例外 / Exceptions
-
-以下文件是作者的个人素材，不属于本 MIT 授权的范围，请勿再分发或商用：
-
-  assets/qr_099.jpg         作者收款码
-  assets/bili_profile.jpg   作者 B 站主页截图
-
-The following files are the author's personal assets and are NOT covered by
-the MIT license above. Please do not redistribute or use them commercially:
-
-  assets/qr_099.jpg         author's donation QR code
-  assets/bili_profile.jpg   screenshot of the author's Bilibili profile
-
-第三方依赖（Apache Commons Compress / XZ for Java）遵循各自的许可，
-详见 third_party/ 目录。
