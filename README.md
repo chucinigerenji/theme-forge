@@ -97,7 +97,7 @@ bash build.sh /tmp/out.apk    # 指定输出
 │   ├── 主题文件-功能对照.md
 │   └── mtz文件功能对照表.csv
 └── dist/                       # 构建产物
-    └── 主题工坊-ThemeForge-v2.0.apk
+    └── ThemeForge-v2.1.apk
 ```
 
 ---
