@@ -100,7 +100,9 @@ find "$BUILD/classes" -name '*.class' > "$BUILD/classes.txt"
   "$ROOT/third_party/commons-compress-1.21.jar" "$ROOT/third_party/xz-1.9.jar"
 
 echo "[5/6] 打包 dex"
-( cd "$BUILD/dex" && zip -q "$BUILD/base.apk" classes.dex )
+# 固定时间戳：让每次构建产物完全一致（可复现构建）
+touch -t 198001010000 "$BUILD/dex/classes.dex"
+( cd "$BUILD/dex" && zip -qX "$BUILD/base.apk" classes.dex )
 
 echo "[6/6] zipalign + 签名"
 "$ZIPALIGN" -f 4 "$BUILD/base.apk" "$BUILD/aligned.apk"
@@ -114,7 +116,7 @@ if [ ! -f "$KS" ]; then
 fi
 "$APKSIGNER" sign --ks "$KS" --ks-key-alias forge \
   --ks-pass pass:android --key-pass pass:android \
-  --v1-signing-enabled true --v2-signing-enabled true \
+  --v1-signing-enabled false --v2-signing-enabled true \
   --out "$OUT" "$BUILD/aligned.apk"
 
 rm -rf "$BUILD"
