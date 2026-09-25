@@ -20,7 +20,7 @@ import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
 
-/** 文档页：使用说明 / MTZ 文件功能对照表。 */
+/** 文档页：使用手册 / 新手教程 / MTZ 文件功能对照表。 */
 public class DocActivity extends Activity {
 
     public static final String EXTRA_MODE = "mode";
@@ -58,7 +58,7 @@ public class DocActivity extends Activity {
         TextView title = findViewById(R.id.tvTitle);
 
         if (MODE_TUTORIAL.equals(mode) || MODE_GUIDE.equals(mode)) {
-            title.setText(MODE_TUTORIAL.equals(mode) ? "新手教程" : "使用说明");
+            title.setText(MODE_TUTORIAL.equals(mode) ? "新手教程" : "使用手册");
             findViewById(R.id.searchBar).setVisibility(View.GONE);
             findViewById(R.id.listDoc).setVisibility(View.GONE);
             ScrollView sv = findViewById(R.id.scrollDoc);
@@ -67,7 +67,7 @@ public class DocActivity extends Activity {
             tv.setText(readAsset(MODE_TUTORIAL.equals(mode) ? "tutorial.txt" : "guide.txt"));
             tvCount.setText(MODE_TUTORIAL.equals(mode)
                     ? "主题工坊 · 超详细新手教程（上下滑动阅读）"
-                    : "主题工坊 · 使用说明");
+                    : "主题工坊 · 使用手册（20 章，上下滑动阅读）");
             tv.setTextColor(0xFF333333);
         } else {
             title.setText("MTZ 文件功能对照表");
