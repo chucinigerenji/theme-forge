@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="bg">#FFF4F5F7</color>
+    <color name="card">#FFFFFFFF</color>
+    <color name="primary">#FF3A6FF7</color>
+    <color name="primary_dark">#FF2B55C8</color>
+    <color name="text">#FF1A1A1A</color>
+    <color name="text_dim">#FF8A8A8E</color>
+    <color name="line">#FFE6E8EC</color>
+    <color name="thumb">#FFF0F1F4</color>
+    <color name="preview_scrim">#8C000000</color>
+</resources>

@@ -1,0 +1,16 @@
+# 构建中间产物
+build/
+*.apk.idsig
+
+# 本地签名文件（每个开发机自己生成；想固定签名请自行备份）
+debug.keystore
+
+# 本地 android.jar（体积大，不入库）
+sdk/*.jar
+
+# 编辑器 / 系统
+.idea/
+*.iml
+.DS_Store
+Thumbs.db
+*.log

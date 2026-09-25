@@ -1,0 +1,12 @@
+XZ for Java (org.tukaani:xz)
+URL: https://tukaani.org/xz/java.html
+Maven: https://repo1.maven.org/maven2/org/tukaani/xz/1.9/
+
+XZ for Java is released into the Public Domain.
+The author (Lasse Collin) states: "This library is free software; you can
+redistribute it and/or modify it under the terms of the GNU Lesser General
+Public License as published by the Free Software Foundation; either version
+2.1 of the License, or (at your option) any later version."  In addition the
+author has placed it in the public domain where that is legally possible.
+
+See the upstream page above for the authoritative license text.

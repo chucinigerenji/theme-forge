@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:paddingTop="6dp"
+    android:paddingBottom="6dp">
+
+    <ImageView
+        android:id="@+id/ivThumb"
+        android:layout_width="58dp"
+        android:layout_height="58dp"
+        android:background="@drawable/thumb"
+        android:scaleType="centerCrop" />
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginLeft="10dp"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/tvLabel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:textColor="@color/text"
+            android:textSize="14sp" />
+
+        <TextView
+            android:id="@+id/tvSub"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:lineSpacingExtra="1dp"
+            android:maxLines="2"
+            android:textColor="@color/text_dim"
+            android:textSize="10sp" />
+    </LinearLayout>
+
+    <Button
+        android:id="@+id/btnPick"
+        style="@style/Btn"
+        android:minWidth="56dp"
+        android:layout_width="wrap_content"
+        android:layout_height="40dp"
+        android:text="选图" />
+
+    <Button
+        android:id="@+id/btnEdit"
+        style="@style/Btn"
+        android:layout_width="wrap_content"
+        android:layout_height="40dp"
+        android:layout_marginLeft="6dp"
+        android:text="编辑" />
+
+    <Button
+        android:id="@+id/btnSize"
+        style="@style/Btn"
+        android:layout_width="wrap_content"
+        android:layout_height="40dp"
+        android:layout_marginLeft="6dp"
+        android:minWidth="56dp"
+        android:paddingLeft="8dp"
+        android:paddingRight="8dp"
+        android:text="尺寸" />
+
+    <Button
+        android:id="@+id/btnDel"
+        style="@style/Btn"
+        android:layout_width="wrap_content"
+        android:layout_height="40dp"
+        android:layout_marginLeft="6dp"
+        android:minWidth="50dp"
+        android:paddingLeft="8dp"
+        android:paddingRight="8dp"
+        android:text="清" />
+</LinearLayout>
