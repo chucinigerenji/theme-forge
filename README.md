@@ -158,6 +158,14 @@ xxx.mtz
 
 ---
 
+## 许可
+
+本项目采用 **MIT License**（见 `LICENSE`）。
+
+> 例外：`assets/qr_099.jpg`（作者收款码）与 `assets/bili_profile.jpg`（作者 B 站主页截图）
+> 是作者个人素材，**不在 MIT 授权范围内**，请勿再分发或商用。
+> 第三方依赖（Apache Commons Compress / XZ for Java）遵循各自许可，见 `third_party/`。
+
 ## 免责声明
 
 - 本工具**只生成主题文件，不修改系统**；应用主题由系统主题管理器完成，随时可换回默认主题。
