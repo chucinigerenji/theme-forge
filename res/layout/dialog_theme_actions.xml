@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:paddingLeft="12dp"
+    android:paddingTop="4dp"
+    android:paddingRight="12dp"
+    android:paddingBottom="8dp">
+
+    <TextView
+        android:id="@+id/tvActMeta"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:lineSpacingExtra="2dp"
+        android:paddingBottom="10dp"
+        android:textColor="@color/text_dim"
+        android:textSize="12sp" />
+
+    <Button
+        android:id="@+id/btnActBase"
+        style="@style/Btn"
+        android:layout_width="match_parent"
+        android:layout_height="52dp"
+        android:background="@drawable/field"
+        android:gravity="center_vertical|start"
+        android:minWidth="0dp"
+        android:paddingLeft="14dp"
+        android:paddingRight="14dp"
+        android:textSize="15sp" />
+
+    <Button
+        android:id="@+id/btnActRename"
+        style="@style/Btn"
+        android:layout_width="match_parent"
+        android:layout_height="52dp"
+        android:layout_marginTop="8dp"
+        android:background="@drawable/field"
+        android:gravity="center_vertical|start"
+        android:minWidth="0dp"
+        android:paddingLeft="14dp"
+        android:paddingRight="14dp"
+        android:text="重命名"
+        android:textColor="@color/text"
+        android:textSize="15sp" />
+
+    <Button
+        android:id="@+id/btnActShare"
+        style="@style/Btn"
+        android:layout_width="match_parent"
+        android:layout_height="52dp"
+        android:layout_marginTop="8dp"
+        android:background="@drawable/field"
+        android:gravity="center_vertical|start"
+        android:minWidth="0dp"
+        android:paddingLeft="14dp"
+        android:paddingRight="14dp"
+        android:text="导出 / 分享主题文件"
+        android:textColor="@color/text"
+        android:textSize="15sp" />
+
+    <Button
+        android:id="@+id/btnActDelete"
+        style="@style/Btn"
+        android:layout_width="match_parent"
+        android:layout_height="52dp"
+        android:layout_marginTop="8dp"
+        android:background="@drawable/field"
+        android:gravity="center_vertical|start"
+        android:minWidth="0dp"
+        android:paddingLeft="14dp"
+        android:paddingRight="14dp"
+        android:text="从主题库删除"
+        android:textColor="#FFE64A6B"
+        android:textSize="15sp" />
+</LinearLayout>

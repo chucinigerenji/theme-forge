@@ -28,6 +28,10 @@ import java.util.zip.ZipInputStream;
 public class TemplatePreview {
 
     private final java.io.File tpl;
+    /** 主题里确实存在的槽位 id（不受缩略图 LRU 淘汰影响）。 */
+    private final java.util.LinkedHashSet<String> found = new java.util.LinkedHashSet<>();
+    /** 已经探测过的槽位 id（不论结果有没有），避免重复扫包。 */
+    private final java.util.LinkedHashSet<String> scanned = new java.util.LinkedHashSet<>();
     private final LinkedHashMap<String, Bitmap> cache =
             new LinkedHashMap<String, Bitmap>(64, 0.75f, true) {
                 @Override
@@ -46,16 +50,41 @@ public class TemplatePreview {
 
     public synchronized void reset() {
         cache.clear();
+        found.clear();
+        scanned.clear();
     }
 
     public synchronized Bitmap cached(SlotData.Slot s) {
         return cache.get(s.id());
     }
 
-    private synchronized void put(String id, Bitmap bm) {
-        cache.put(id, bm);
+    /**
+     * 这个主题里到底有没有这张图。
+     * 与缩略图 LRU 分开记录：缩略图会被挤掉，但「存在」这个事实要一直留着，
+     * 「从主题取素材」就是靠它筛出模板里真实可用的资源。
+     */
+    public synchronized boolean exists(SlotData.Slot s) {
+        return s != null && found.contains(s.id());
     }
 
+    public synchronized int foundCount() {
+        return found.size();
+    }
+
+    private synchronized void markFound(String id) {
+        found.add(id);
+    }
+
+    private synchronized boolean known(String id) {
+        return found.contains(id) || scanned.contains(id);
+    }
+
+    private synchronized void put(String id, Bitmap bm) {
+        found.add(id);
+        if (bm != null) cache.put(id, bm);
+    }
+
+    /** 缩略图是否已经在内存里（跟 exists 不是一回事）。 */
     private synchronized boolean has(String id) {
         return cache.containsKey(id);
     }
@@ -107,6 +136,92 @@ public class TemplatePreview {
         }
     }
 
+    // ---------------- 存在性索引（只登记、不解码） ----------------
+
+    /**
+     * 快速登记「主题里有哪些槽位」，只比对条目名，不解码图片。
+     * 给「从主题取素材」用来在一个大分类（上千个图标）里筛出真正有的那些：
+     * 解码上千张缩略图会爆内存也没必要，先筛名字，再把可见的几十行解码出来看。
+     */
+    public synchronized void index(List<SlotData.Slot> slots) {
+        if (!valid() || slots == null || slots.isEmpty()) return;
+
+        Map<String, List<SlotData.Slot>> byMod = new LinkedHashMap<>();
+        for (SlotData.Slot s : slots) {
+            if (known(s.id())) continue;
+            List<SlotData.Slot> l = byMod.get(s.module);
+            if (l == null) {
+                l = new ArrayList<>();
+                byMod.put(s.module, l);
+            }
+            l.add(s);
+        }
+        if (byMod.isEmpty()) return;
+
+        ZipFile zf = null;
+        try {
+            zf = new ZipFile(tpl);
+            for (Map.Entry<String, List<SlotData.Slot>> e : byMod.entrySet()) {
+                String module = e.getKey();
+                List<SlotData.Slot> want = e.getValue();
+                if (isRoot(module)) {
+                    for (SlotData.Slot s : want) {
+                        if (zf.getEntry(s.path) != null) markFound(s.id());
+                    }
+                } else {
+                    indexModule(zf, module, want);
+                }
+                synchronized (this) {
+                    for (SlotData.Slot s : want) scanned.add(s.id());
+                }
+            }
+        } catch (Throwable ignored) {
+            // 主题损坏就当作没有素材，不影响别的功能
+        } finally {
+            close(zf);
+        }
+    }
+
+    private void indexModule(ZipFile zf, String module, List<SlotData.Slot> want) {
+        ZipEntry e = zf.getEntry(module);
+        if (e == null) return;
+
+        Map<String, List<SlotData.Slot>> byPath = new LinkedHashMap<>();
+        for (SlotData.Slot s : want) {
+            List<SlotData.Slot> l = byPath.get(s.path);
+            if (l == null) {
+                l = new ArrayList<>();
+                byPath.put(s.path, l);
+            }
+            l.add(s);
+        }
+
+        InputStream raw = null;
+        ZipInputStream zin = null;
+        try {
+            raw = zf.getInputStream(e);
+            zin = new ZipInputStream(new BoundedStream(raw,
+                    e.getSize() >= 0 ? e.getSize() : Long.MAX_VALUE));
+            byte[] buf = new byte[1 << 16];
+            ZipEntry ne;
+            while ((ne = zin.getNextEntry()) != null) {
+                List<SlotData.Slot> hit = byPath.remove(ne.getName());
+                if (hit == null) {
+                    while (zin.read(buf) > 0) {
+                        // 跳过不关心的条目
+                    }
+                    continue;
+                }
+                for (SlotData.Slot s : hit) markFound(s.id());
+                if (byPath.isEmpty()) break;
+            }
+        } catch (Throwable ignored) {
+        } finally {
+            Img.closeQuietly(zin);
+            Img.closeQuietly(raw);
+        }
+    }
+
     // ---------------- 原图（全屏看图用） ----------------
 
     /** 取模板里这张图的完整版本，最长边不超过 maxDim；没有就返回 null。 */
@@ -130,6 +245,79 @@ public class TemplatePreview {
             return null;
         } finally {
             close(zf);
+        }
+    }
+
+    // ---------------- 原始字节（从主题取素材用） ----------------
+
+    /**
+     * 取模板里这张图的「原始文件字节」，不做任何重编码 —— 用于把别的主题里的图标/图片
+     * 原样搬过来当素材，画质和 .9.png 的边都不丢。
+     */
+    public byte[] loadRaw(SlotData.Slot s) {
+        if (!valid() || s == null) return null;
+        ZipFile zf = null;
+        try {
+            zf = new ZipFile(tpl);
+            if (isRoot(s.module)) {
+                ZipEntry ze = zf.getEntry(s.path);
+                if (ze == null) return null;
+                InputStream in = zf.getInputStream(ze);
+                byte[] d = readAll(in, 1 << 28);
+                Img.closeQuietly(in);
+                if (d != null) markFound(s.id());
+                return d;
+            }
+            return scanModuleRaw(zf, s.module, s.path);
+        } catch (Throwable t) {
+            return null;
+        } finally {
+            close(zf);
+        }
+    }
+
+    private byte[] scanModuleRaw(ZipFile zf, String module, String path) {
+        ZipEntry e = zf.getEntry(module);
+        if (e == null) return null;
+        InputStream raw = null;
+        ZipInputStream zin = null;
+        try {
+            raw = zf.getInputStream(e);
+            zin = new ZipInputStream(new BoundedStream(raw,
+                    e.getSize() >= 0 ? e.getSize() : Long.MAX_VALUE));
+            byte[] buf = new byte[1 << 16];
+            ZipEntry ne;
+            while ((ne = zin.getNextEntry()) != null) {
+                if (!path.equals(ne.getName())) {
+                    while (zin.read(buf) > 0) {
+                        // 跳过不需要的条目
+                    }
+                    continue;
+                }
+                byte[] d = readAll(zin, 1 << 28);
+                if (d != null) markFound(module + "|" + path);
+                return d;
+            }
+        } catch (Throwable ignored) {
+        } finally {
+            Img.closeQuietly(zin);
+            Img.closeQuietly(raw);
+        }
+        return null;
+    }
+
+    private static byte[] readAll(InputStream in, int limit) {
+        try {
+            ByteArrayOutputStream bos = new ByteArrayOutputStream();
+            byte[] buf = new byte[1 << 16];
+            int n;
+            while ((n = in.read(buf)) > 0) {
+                bos.write(buf, 0, n);
+                if (bos.size() > limit) return null;
+            }
+            return bos.toByteArray();
+        } catch (Throwable t) {
+            return null;
         }
     }
 

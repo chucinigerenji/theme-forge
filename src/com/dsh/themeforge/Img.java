@@ -56,6 +56,75 @@ public class Img {
         }
     }
 
+    /** 从字节数组解码（模板里取出来的素材走这里）。 */
+    public static Bitmap decodeBytes(byte[] data, int maxDim) {
+        if (data == null || data.length == 0) return null;
+        try {
+            BitmapFactory.Options o = new BitmapFactory.Options();
+            o.inJustDecodeBounds = true;
+            BitmapFactory.decodeByteArray(data, 0, data.length, o);
+            o.inSampleSize = sample(o.outWidth, o.outHeight, maxDim);
+            o.inJustDecodeBounds = false;
+            o.inPreferredConfig = Bitmap.Config.ARGB_8888;
+            return BitmapFactory.decodeByteArray(data, 0, data.length, o);
+        } catch (Throwable t) {
+            return null;
+        }
+    }
+
+    /**
+     * 判断一张图是不是已经带九宫格边的 .9.png：
+     * 右边一列、最下面一行必须全透明，上边一行 / 左边一列只能出现透明或纯黑（拉伸标记）。
+     */
+    public static boolean looksNinePatch(Bitmap bm) {
+        if (bm == null) return false;
+        int w = bm.getWidth(), h = bm.getHeight();
+        if (w < 3 || h < 3) return false;
+        try {
+            int[] top = new int[w];
+            int[] bottom = new int[w];
+            int[] left = new int[h];
+            int[] right = new int[h];
+            bm.getPixels(top, 0, w, 0, 0, w, 1);
+            bm.getPixels(bottom, 0, w, 0, h - 1, w, 1);
+            bm.getPixels(left, 0, 1, 0, 0, 1, h);
+            bm.getPixels(right, 0, 1, w - 1, 0, 1, h);
+            boolean mark = false;
+            for (int i = 0; i < w; i++) {
+                if ((bottom[i] >>> 24) != 0) return false;
+                int a = top[i] >>> 24;
+                if (a == 0) continue;
+                if (top[i] != 0xFF000000) return false;
+                mark = true;
+            }
+            for (int i = 0; i < h; i++) {
+                if ((right[i] >>> 24) != 0) return false;
+                int a = left[i] >>> 24;
+                if (a == 0) continue;
+                if (left[i] != 0xFF000000) return false;
+                mark = true;
+            }
+            return mark;
+        } catch (Throwable t) {
+            return false;
+        }
+    }
+
+    /**
+     * 去掉 .9.png 的 1px 九宫格边，只留图案本体。
+     * 从别的主题搬素材时必须做这一步：不然打包时会再补一层边，变成 3px 双层边。
+     */
+    public static Bitmap stripNinePatch(Bitmap bm) {
+        if (!looksNinePatch(bm)) return bm;
+        try {
+            Bitmap out = Bitmap.createBitmap(bm, 1, 1, bm.getWidth() - 2, bm.getHeight() - 2);
+            if (out != bm) bm.recycle();
+            return out;
+        } catch (Throwable t) {
+            return bm;
+        }
+    }
+
     private static int sample(int w, int h, int maxDim) {
         int s = 1;
         if (w <= 0 || h <= 0) return 1;

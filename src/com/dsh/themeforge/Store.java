@@ -116,6 +116,33 @@ public class Store {
         }
     }
 
+    /** 把一张图片直接按原始字节写进该槽位（内容寻址，不重编码）。 */
+    public void putBytes(SlotData.Slot s, byte[] data) throws IOException {
+        if (data == null || data.length == 0) throw new IOException("图片内容为空");
+        String h = md5(data);
+        File dst = new File(imgs(), h + ".png");
+        if (!dst.isFile()) {
+            File tmp = File.createTempFile("img", ".bin", ctx.getCacheDir());
+            try {
+                FileOutputStream fo = new FileOutputStream(tmp);
+                try {
+                    fo.write(data);
+                } finally {
+                    Img.closeQuietly(fo);
+                }
+                if (!tmp.renameTo(dst)) {
+                    copyFile(tmp, dst);
+                }
+            } finally {
+                if (tmp.exists()) tmp.delete();
+            }
+        }
+        File mk = marker(s);
+        writeLine(mk, h);
+        ensureCache();
+        filled.add(mk.getName());
+    }
+
     public void clear(SlotData.Slot s) {
         File mk = marker(s);
         if (mk.exists()) mk.delete();
@@ -180,6 +207,18 @@ public class Store {
         } finally {
             Img.closeQuietly(in);
             Img.closeQuietly(out);
+        }
+    }
+
+    private static String md5(byte[] data) throws IOException {
+        try {
+            MessageDigest md = MessageDigest.getInstance("MD5");
+            md.update(data);
+            StringBuilder sb = new StringBuilder();
+            for (byte x : md.digest()) sb.append(String.format("%02x", x));
+            return sb.toString();
+        } catch (Exception e) {
+            throw new IOException(e);
         }
     }
 

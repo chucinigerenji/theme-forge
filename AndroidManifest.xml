@@ -44,6 +44,20 @@
             android:parentActivityName=".MainActivity" />
 
         <activity
+            android:name=".LibraryActivity"
+            android:configChanges="orientation|screenSize|keyboardHidden|screenLayout"
+            android:exported="false"
+            android:label="主题库"
+            android:parentActivityName=".MainActivity" />
+
+        <activity
+            android:name=".ThemePickActivity"
+            android:configChanges="orientation|screenSize|keyboardHidden|screenLayout"
+            android:exported="false"
+            android:label="从主题取素材"
+            android:parentActivityName=".MainActivity" />
+
+        <activity
             android:name=".DocActivity"
             android:configChanges="orientation|screenSize|keyboardHidden|screenLayout"
             android:exported="false"

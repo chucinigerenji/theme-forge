@@ -40,6 +40,8 @@ public class MainActivity extends Activity {
     private static final int REQ_ZIP = 4;
     private static final int REQ_EDIT = 5;
     private static final int REQ_SETTINGS = 6;
+    private static final int REQ_PICKTHEME = 7;
+    private static final int REQ_LIB = 8;
 
     private static final int INITIAL_ROWS = 8;
     private static final int STEP_ROWS = 30;
@@ -558,10 +560,7 @@ public class MainActivity extends Activity {
             iv.setOnClickListener(null);
         }
 
-        pick.setOnClickListener(v -> {
-            pendingSlot = s;
-            pickFile(REQ_SLOT, "image/*");
-        });
+        pick.setOnClickListener(v -> onPickClick(s));
         edit.setOnClickListener(v -> {
             if (store.imageFor(s) == null) {
                 toast("先选一张图，再来裁剪");
@@ -630,37 +629,100 @@ public class MainActivity extends Activity {
 
     private void updateTemplateLabel() {
         String p = store.getTemplatePath();
-        if (p == null) {
-            tvTemplate.setText("未使用模板：只打包你选的图片");
-        } else {
-            File f = new File(p);
-            tvTemplate.setText("模板：" + f.getName() + "（" + (f.length() / 1048576) + " MB）\n未替换的内容原样保留");
+        ThemeLib.Item cur = themeForPath(p);
+        List<ThemeLib.Item> lib = ThemeLib.list(this);
+        StringBuilder sb = new StringBuilder();
+        if (cur != null) sb.append("基础模板：").append(cur.name);
+        else if (p != null) sb.append("基础模板：").append(new File(p).getName());
+        else sb.append("基础模板：未使用（只打包你选的图片）");
+        sb.append("\n主题库：").append(lib.size()).append(" 个主题");
+        if (lib.isEmpty()) sb.append("\n点这里导入主题文件，制作时还能从里面取素材");
+        else sb.append("　可切换模板 / 取素材");
+        tvTemplate.setText(sb.toString());
+    }
+
+    /** 按路径 / 文件名＋体积找出这个模板对应主题库里的哪一项（不读文件内容，够快）。 */
+    private ThemeLib.Item themeForPath(String p) {
+        if (p == null) return null;
+        File f = new File(p);
+        if (!f.isFile()) return null;
+        for (ThemeLib.Item it : ThemeLib.list(this)) {
+            if (it.file.getAbsolutePath().equals(p)) return it;
+            if (it.file.getName().equals(f.getName()) && it.size == f.length()) return it;
         }
+        return null;
     }
 
     // ==================== 交互 ====================
 
-    private void onTemplateClick() {
-        final String cur = store.getTemplatePath();
-        if (cur == null) {
-            pickFile(REQ_TEMPLATE, "*/*");
+    /** 给某个槽位选图：相册、主题库两条来源。主题库空着时不打扰，直接开相册。 */
+    private void onPickClick(final SlotData.Slot s) {
+        pendingSlot = s;
+        List<ThemeLib.Item> lib = ThemeLib.list(this);
+        if (lib.isEmpty()) {
+            pickFile(REQ_SLOT, "image/*");
             return;
         }
+        StringBuilder sb = new StringBuilder("主题库里已有 " + lib.size() + " 个主题：");
+        for (int i = 0; i < lib.size() && i < 4; i++) sb.append("\n· ").append(lib.get(i).name);
+        if (lib.size() > 4) sb.append("\n· …");
+        sb.append("\n\n从主题库取素材，可以直接用别的主题里的图标/图片，不用再找原图。");
         new AlertDialog.Builder(this)
-                .setTitle("基础模板")
-                .setMessage("支持 .mtz 和 .7z（含自解压 exe 形式的 7z，会自动取出里面的主题）。\n\n"
-                        + "模板里的其它内容（锁屏样式、息屏、图标、各应用皮肤等）会原样保留，"
-                        + "只替换你上传图片对应的文件。\n\n模板：" + new File(cur).getName())
-                .setPositiveButton("更换模板", (d, w) -> pickFile(REQ_TEMPLATE, "*/*"))
-                .setNeutralButton("移除模板", (d, w) -> {
-                    store.setTemplatePath(null);
-                    initTemplatePreview();
-                    renderAll();
-                    updateTemplateLabel();
-                    updateStatus();
-                })
+                .setTitle("给「" + s.label + "」选图")
+                .setMessage(sb.toString())
+                .setPositiveButton("从相册选图片", (d, w) -> pickFile(REQ_SLOT, "image/*"))
+                .setNeutralButton("从主题库取素材", (d, w) -> openThemePick(s))
                 .setNegativeButton("取消", null)
                 .show();
+    }
+
+    private void openThemePick(SlotData.Slot s) {
+        Intent i = new Intent(this, ThemePickActivity.class);
+        i.putExtra(ThemePickActivity.EXTRA_SLOT, s.id());
+        ThemeLib.Item cur = themeForPath(store.getTemplatePath());
+        if (cur != null) i.putExtra(ThemePickActivity.EXTRA_THEME, cur.id);
+        startActivityForResult(i, REQ_PICKTHEME);
+    }
+
+    private void onTemplateClick() {
+        startActivityForResult(new Intent(this, LibraryActivity.class), REQ_LIB);
+    }
+
+    /** 把刚打好的主题收进主题库，下次可当基础模板或从中取素材。 */
+    private void saveAsTemplate(final File mtz) {
+        if (mtz == null || !mtz.isFile()) {
+            toast("没有可保存的主题包");
+            return;
+        }
+        tvStatus.setText("正在存入主题库…");
+        pool.execute(() -> {
+            try {
+                final ThemeLib.Item it = ThemeLib.add(MainActivity.this, mtz, ThemeLib.stripExt(mtz.getName()));
+                ui.post(() -> {
+                    updateTemplateLabel();
+                    updateStatus();
+                    new AlertDialog.Builder(MainActivity.this)
+                            .setTitle(it.duplicate ? "主题库里已经有这个主题" : "已存入主题库")
+                            .setMessage("「" + it.name + "」 " + it.sizeText()
+                                    + "\n\n要把它设为下次打包的基础模板吗？\n设为模板后，你没有替换的界面会原样保留。")
+                            .setPositiveButton("设为基础模板", (d, w) -> {
+                                store.setTemplatePath(it.file.getAbsolutePath());
+                                initTemplatePreview();
+                                renderAll();
+                                updateTemplateLabel();
+                                updateStatus();
+                                toast("已设为基础模板：" + it.name);
+                            })
+                            .setNegativeButton("只保存", (d, w) -> toast("已存入主题库"))
+                            .show();
+                });
+            } catch (Throwable t) {
+                ui.post(() -> {
+                    updateStatus();
+                    toast("存入主题库失败：" + t);
+                });
+            }
+        });
     }
 
     private void onBulkClick(final Card c) {
@@ -764,6 +826,26 @@ public class MainActivity extends Activity {
     protected void onActivityResult(int req, int res, Intent data) {
         super.onActivityResult(req, res, data);
         if (req == REQ_SETTINGS) return;
+        if (req == REQ_LIB) {
+            // 主题库那边可能换了基础模板 / 改名 / 删了，回来全部刷新
+            initTemplatePreview();
+            renderAll();
+            updateTemplateLabel();
+            updateStatus();
+            return;
+        }
+        if (req == REQ_PICKTHEME) {
+            final SlotData.Slot s = pendingSlot;
+            pendingSlot = null;
+            if (res == RESULT_OK && s != null) {
+                View row = slotRows.get(s.id());
+                if (row != null) bindSlot(row, s);
+                Card c = cards.get(rowCard.get(s.id()));
+                if (c != null) updateCount(c);
+                updateStatus();
+            }
+            return;
+        }
         if (req == REQ_EDIT) {
             if (res == RESULT_OK && pendingEdit != null) {
                 View row = slotRows.get(pendingEdit.id());
@@ -984,7 +1066,7 @@ public class MainActivity extends Activity {
         }
     }
 
-    /** 外部直接塞了 base-template.7z / .exe 时，后台自动解包成模板。 */
+    /** 外部直接塞了 base-template.7z / .exe 时，后台自动解包并收进主题库。 */
     private void maybeExtractDropIn7z() {
         File dir = getExternalFilesDir(null);
         if (dir == null) return;
@@ -1002,8 +1084,16 @@ public class MainActivity extends Activity {
                 ui.post(() -> tvStatus.setText("7z 解包失败：" + t));
                 return;
             }
-            ui.post(() -> {
+            ThemeLib.Item it = ThemeLib.adoptLegacy(MainActivity.this, out);
+            if (it != null) {
+                ThemeLib.rename(MainActivity.this, it, ThemeLib.stripExt(src.getName()));
+                store.setTemplatePath(it.file.getAbsolutePath());
+                // 标记来源已处理，下次启动不再重复解包
+                src.renameTo(new File(src.getAbsolutePath() + ".imported"));
+            } else {
                 store.setTemplatePath(out.getAbsolutePath());
+            }
+            ui.post(() -> {
                 initTemplatePreview();
                 renderAll();
                 updateTemplateLabel();
@@ -1099,9 +1189,11 @@ public class MainActivity extends Activity {
                     }
                     new AlertDialog.Builder(MainActivity.this)
                             .setTitle("主题包已生成")
-                            .setMessage(sb.toString())
+                            .setMessage(sb.toString()
+                                    + "\n\n「保存为模板」会把它收进主题库："
+                                    + "下次可以直接在它基础上继续改，或者从里面取素材。")
                             .setPositiveButton("用主题安装器打开", (d, w) -> openWithThemeKit(lastOut))
-                            .setNeutralButton("分享", (d, w) -> share(lastOut))
+                            .setNeutralButton("保存为模板", (d, w) -> saveAsTemplate(lastOut))
                             .setNegativeButton("关闭", null)
                             .show();
                 });
