@@ -84,6 +84,7 @@ public class ThemePickActivity extends Activity {
     private boolean scanning;
     private long scanStart;
     private Runnable ticker;
+    private boolean destroyed;
 
     private final ExecutorService pool = Executors.newFixedThreadPool(3);
     private final Handler ui = new Handler(Looper.getMainLooper());
@@ -139,9 +140,11 @@ public class ThemePickActivity extends Activity {
                     .show();
             return;
         }
-        // 一次性建好所有主题的索引器，之后只读，线程安全
+        // 一次性建好所有主题的索引器，之后只读，线程安全。
+        // 用较小的缩略图缓存上限：这里是「每个主题一份实例」，
+        // 主题库里存了十几个主题时，400 条/份会直接吃掉几百 MB。
         for (ThemeLib.Item it : themes) {
-            previews.put(it.id, new TemplatePreview(it.file));
+            previews.put(it.id, new TemplatePreview(it.file, 160));
         }
 
         // 默认来源＝全部主题：制作时可以直接从任何一个已保存的主题里挑素材，
@@ -218,6 +221,7 @@ public class ThemePickActivity extends Activity {
 
     @Override
     protected void onDestroy() {
+        destroyed = true;
         stopTicker();
         super.onDestroy();
     }
@@ -352,7 +356,7 @@ public class ThemePickActivity extends Activity {
             }
             final List<SlotData.Slot> fhit = new ArrayList<>(hit);
             ui.post(() -> {
-                if (myGen != gen) return;   // 已经被更新的请求取代，丢弃
+                if (destroyed || myGen != gen) return;   // 页面已关 / 已被更新的请求取代
                 stopTicker();
                 resultCache.put(key, fhit);
                 hits = fhit;
@@ -455,6 +459,7 @@ public class ThemePickActivity extends Activity {
                 }
             }
             ui.post(() -> {
+                if (destroyed) return;
                 for (SlotData.Slot s : page) {
                     View row = rows.get(s.id());
                     if (row == null) continue;
@@ -511,7 +516,7 @@ public class ThemePickActivity extends Activity {
                     int maxDim = Math.max(512, Math.min(4096, Math.max(target.outW(), target.outH())));
                     Bitmap bm = Img.decodeBytes(raw, maxDim);
                     if (bm == null) throw new Exception("这张图无法解码");
-                    bm = Img.stripNinePatch(bm);
+                    bm = Img.stripNinePatch(bm, srcNine);
                     try {
                         store.put(target, bm);
                     } finally {
@@ -523,12 +528,14 @@ public class ThemePickActivity extends Activity {
                 }
                 final String fname = from;
                 ui.post(() -> {
+                    if (destroyed) return;
                     toast("已用「" + fname + "」里的素材替换「" + target.label + "」");
                     setResult(RESULT_OK);
                     finish();
                 });
             } catch (Throwable t) {
                 ui.post(() -> {
+                    if (destroyed) return;
                     btnUse.setEnabled(true);
                     tvStatus.setText("取素材失败：" + t);
                 });

@@ -113,9 +113,14 @@ public class Img {
     /**
      * 去掉 .9.png 的 1px 九宫格边，只留图案本体。
      * 从别的主题搬素材时必须做这一步：不然打包时会再补一层边，变成 3px 双层边。
+     *
+     * @param force true = 文件名已经明说它是 .9.png，就别再靠像素特征猜了，
+     *              直接裁掉外圈 1px（作者做的不规范九宫格也能正确处理）
      */
-    public static Bitmap stripNinePatch(Bitmap bm) {
-        if (!looksNinePatch(bm)) return bm;
+    public static Bitmap stripNinePatch(Bitmap bm, boolean force) {
+        if (bm == null) return null;
+        if (bm.getWidth() < 3 || bm.getHeight() < 3) return bm;
+        if (!force && !looksNinePatch(bm)) return bm;
         try {
             Bitmap out = Bitmap.createBitmap(bm, 1, 1, bm.getWidth() - 2, bm.getHeight() - 2);
             if (out != bm) bm.recycle();
@@ -123,6 +128,10 @@ public class Img {
         } catch (Throwable t) {
             return bm;
         }
+    }
+
+    public static Bitmap stripNinePatch(Bitmap bm) {
+        return stripNinePatch(bm, false);
     }
 
     private static int sample(int w, int h, int maxDim) {

@@ -61,29 +61,48 @@ public class Store {
         return new File(markers(), Integer.toHexString(s.id().hashCode()) + "_" + name + ".ref");
     }
 
-    private final java.util.HashSet<String> filled = new java.util.HashSet<>();
-    private boolean cacheReady = false;
+    /**
+     * 「哪些槽位已经有图」的缓存。
+     *
+     * 注意：必须是**进程级静态**。主界面、裁剪页、主题库取素材页各自 new 了
+     * 一个 Store，但它们读写的是同一批 marker 文件；如果缓存是每个实例一份，
+     * 「从主题库取素材」在另一个 Activity 里写完图，主界面回来读自己的旧缓存
+     * 就会以为这个槽位没图 —— 表现成「点了使用但界面毫无变化」。
+     */
+    private static final java.util.HashSet<String> FILLED = new java.util.HashSet<>();
+    private static boolean cacheReady = false;
 
-    private synchronized void ensureCache() {
-        if (cacheReady) return;
-        File[] fs = markers().listFiles();
-        if (fs != null) {
-            for (File f : fs) {
-                if (!f.getName().endsWith(".ref")) continue;
-                String h = readLine(f);
-                if (h != null && new File(imgs(), h + ".png").isFile()) {
-                    filled.add(f.getName());
+    private void ensureCache() {
+        synchronized (FILLED) {
+            if (cacheReady) return;
+            File[] fs = markers().listFiles();
+            if (fs != null) {
+                for (File f : fs) {
+                    if (!f.getName().endsWith(".ref")) continue;
+                    String h = readLine(f);
+                    if (h != null && new File(imgs(), h + ".png").isFile()) {
+                        FILLED.add(f.getName());
+                    }
                 }
             }
+            cacheReady = true;
         }
-        cacheReady = true;
+    }
+
+    private static void markFilled(String name, boolean on) {
+        synchronized (FILLED) {
+            if (on) FILLED.add(name);
+            else FILLED.remove(name);
+        }
     }
 
     /** 返回该槽位当前使用的图片文件，未设置时返回 null。 */
     public File imageFor(SlotData.Slot s) {
         ensureCache();
         File mk = marker(s);
-        if (!filled.contains(mk.getName())) return null;
+        synchronized (FILLED) {
+            if (!FILLED.contains(mk.getName())) return null;
+        }
         String h = readLine(mk);
         if (h == null || h.length() == 0) return null;
         File img = new File(imgs(), h + ".png");
@@ -92,7 +111,9 @@ public class Store {
 
     public boolean has(SlotData.Slot s) {
         ensureCache();
-        return filled.contains(marker(s).getName());
+        synchronized (FILLED) {
+            return FILLED.contains(marker(s).getName());
+        }
     }
 
     /** 写入一张图片到该槽位。 */
@@ -110,7 +131,7 @@ public class Store {
             File mk = marker(s);
             writeLine(mk, h);
             ensureCache();
-            filled.add(mk.getName());
+            markFilled(mk.getName(), true);
         } finally {
             if (tmp.exists()) tmp.delete();
         }
@@ -140,14 +161,14 @@ public class Store {
         File mk = marker(s);
         writeLine(mk, h);
         ensureCache();
-        filled.add(mk.getName());
+        markFilled(mk.getName(), true);
     }
 
     public void clear(SlotData.Slot s) {
         File mk = marker(s);
         if (mk.exists()) mk.delete();
         ensureCache();
-        filled.remove(mk.getName());
+        markFilled(mk.getName(), false);
     }
 
     public void clear(List<SlotData.Slot> list) {

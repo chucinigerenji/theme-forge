@@ -14,7 +14,7 @@ set -e
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 APP="ThemeForge"
-VERSION_CODE=14
+VERSION_CODE=15
 VERSION_NAME="2.1"
 MIN_SDK=24
 TARGET_SDK=34

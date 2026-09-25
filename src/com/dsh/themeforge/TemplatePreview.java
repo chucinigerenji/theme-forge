@@ -28,6 +28,10 @@ import java.util.zip.ZipInputStream;
 public class TemplatePreview {
 
     private final java.io.File tpl;
+    /** 缩略图内存缓存条数上限（见构造函数说明）。 */
+    private final int cacheLimit;
+    /** 扫包锁：扫描期间不能被 exists()/prepare() 阻塞，所以单独一把锁。 */
+    private final Object scanLock = new Object();
     /** 主题里确实存在的槽位 id（不受缩略图 LRU 淘汰影响）。 */
     private final java.util.LinkedHashSet<String> found = new java.util.LinkedHashSet<>();
     /** 已经探测过的槽位 id（不论结果有没有），避免重复扫包。 */
@@ -36,12 +40,22 @@ public class TemplatePreview {
             new LinkedHashMap<String, Bitmap>(64, 0.75f, true) {
                 @Override
                 protected boolean removeEldestEntry(Map.Entry<String, Bitmap> e) {
-                    return size() > 400;
+                    return size() > TemplatePreview.this.cacheLimit;
                 }
             };
 
     public TemplatePreview(java.io.File tpl) {
+        this(tpl, 400);
+    }
+
+    /**
+     * @param cacheLimit 缩略图缓存条数上限。主界面只用一份实例，400 够用；
+     *                   「从主题取素材」是每个来源主题一份实例，主题多时必须调小，
+     *                   否则 10 个主题 × 400 张 128px 缩略图会吃掉几百 MB 内存。
+     */
+    public TemplatePreview(java.io.File tpl, int cacheLimit) {
         this.tpl = tpl;
+        this.cacheLimit = Math.max(24, cacheLimit);
     }
 
     public boolean valid() {
@@ -73,6 +87,10 @@ public class TemplatePreview {
 
     private synchronized void markFound(String id) {
         found.add(id);
+    }
+
+    private synchronized void markScanned(List<SlotData.Slot> slots) {
+        for (SlotData.Slot s : slots) scanned.add(s.id());
     }
 
     private synchronized boolean known(String id) {
@@ -143,7 +161,13 @@ public class TemplatePreview {
      * 给「从主题取素材」用来在一个大分类（上千个图标）里筛出真正有的那些：
      * 解码上千张缩略图会爆内存也没必要，先筛名字，再把可见的几十行解码出来看。
      */
-    public synchronized void index(List<SlotData.Slot> slots) {
+    public void index(List<SlotData.Slot> slots) {
+        synchronized (scanLock) {
+            doIndex(slots);
+        }
+    }
+
+    private void doIndex(List<SlotData.Slot> slots) {
         if (!valid() || slots == null || slots.isEmpty()) return;
 
         Map<String, List<SlotData.Slot>> byMod = new LinkedHashMap<>();
@@ -171,9 +195,7 @@ public class TemplatePreview {
                 } else {
                     indexModule(zf, module, want);
                 }
-                synchronized (this) {
-                    for (SlotData.Slot s : want) scanned.add(s.id());
-                }
+                markScanned(want);
             }
         } catch (Throwable ignored) {
             // 主题损坏就当作没有素材，不影响别的功能
