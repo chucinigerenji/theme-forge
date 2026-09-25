@@ -2,9 +2,9 @@
 
 一个跑在 Android 手机上的**小米 / 澎湃OS 主题制作工具**：给每个界面喂一张图，就能生成一套能直接装进系统的 `.mtz` 主题，用 ThemeKit 或系统主题管理器加载即可。
 
-- 包名 `com.dsh.themeforge`　·　版本 2.0（versionCode 13）
+- 包名 `com.dsh.themeforge`　·　版本 2.1（versionCode 16）
 - minSdk 24 / targetSdk 34　·　编译实测：澎湃OS 3.0（Android 16）
-- 体积约 780 KB，**纯 Java + 系统 API，不依赖 AndroidX / Kotlin / Gradle**
+- 体积约 810 KB，**纯 Java + 系统 API，不依赖 AndroidX / Kotlin / Gradle**
 
 ---
 
@@ -44,7 +44,7 @@
 不需要 Gradle，只用 `aapt2 + javac + d8 + apksigner`：
 
 ```bash
-bash build.sh                 # → dist/ThemeForge-v2.0.apk
+bash build.sh                 # → dist/ThemeForge-v2.1.apk
 bash build.sh /tmp/out.apk    # 指定输出
 ```
 
